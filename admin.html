@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .container {
-            width: 90%;
+            width: 80%;
             margin: auto;
             text-align: center;
         }
@@ -19,12 +19,13 @@
         }
 
         table, th, td {
-            border: 1px solid #ddd;
+            border: 2px solid #ddd;
             padding: 8px;
         }
 
         th {
-            background-color: #f2f2f2;
+            /* background-color: transparent; */
+            /* background-color: #f2f2f2; */
         }
 
         td {
@@ -101,8 +102,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>Admin View</h1>
-        <button id="viewSubscribers">View Subscribers</button>
+        <h1>ADMIN VIEW</h1>
+        <button id="viewSubscribers">View 2025 Subscribers</button>
         <div id="subscribersList"></div>
     </div>
 
@@ -149,94 +150,108 @@
     </div>
 
     <script>
-        let currentEditIndex = -1; // Store the index of the subscriber being edited
+        let currentEditId = null; // Store the ID of the subscriber being edited
 
         document.getElementById('viewSubscribers').addEventListener('click', function() {
-            const subscribers = JSON.parse(localStorage.getItem('subscribers')) || [];
-            const subscribersList = document.getElementById('subscribersList');
+            fetch('https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers')
+            .then(response => response.json())
+            .then(subscribers => {
+                const subscribersList = document.getElementById('subscribersList');
 
-            // Clear previous list
-            subscribersList.innerHTML = '';
+                // Clear previous list
+                subscribersList.innerHTML = '';
 
-            if (subscribers.length === 0) {
-                subscribersList.innerHTML = '<p>No subscribers found.</p>';
-                return;
-            }
+                if (subscribers.length === 0) {
+                    subscribersList.innerHTML = '<p>No subscribers found.</p>';
+                    return;
+                }
 
-            const table = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Serial Number</th>
-                            <th>Full Name</th>
-                            <th>Profile Code</th>
-                            <th>Exam Town Code</th>
-                            <th>Batch</th>
-                            <th>Assistance Package</th>
-                            <th>Score</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${subscribers.map((subscriber, index) => `
-                            <tr class="${index % 2 === 0 ? 'even-row' : 'odd-row'}">
-                                <td>${subscriber.serialNumber}</td>
-                                <td>${subscriber.fullName}</td>
-                                <td>${subscriber.profileCode}</td>
-                                <td>${subscriber.examTownCode}</td>
-                                <td>${subscriber.batch}</td>
-                                <td>${subscriber.assistancePackage}</td>
-                                <td>${subscriber.score}</td>
-                                <td><button onclick="editSubscriber(${index})">Edit</button></td>
+                const table = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Serial Number</th>
+                                <th>Full Name</th>
+                                <th>Profile Code</th>
+                                <th>Exam Town Code</th>
+                                <th>Batch</th>
+                                <th>Assistance Package</th>
+                                <th>Score</th>
+                                <th>Actions</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+                        </thead>
+                        <tbody>
+                            ${subscribers.map((subscriber) => `
+                                <tr class="${subscribers.indexOf(subscriber) % 2 === 0 ? 'even-row' : 'odd-row'}">
+                                    <td>${subscriber.id}</td>
+                                    <td>${subscriber.fullName}</td>
+                                    <td>${subscriber.profileCode}</td>
+                                    <td>${subscriber.examTownCode}</td>
+                                    <td>${subscriber.batch}</td>
+                                    <td>${subscriber.assistancePackage}</td>
+                                    <td>${subscriber.score}</td>
+                                    <td><button onclick="editSubscriber(${subscriber.id})">Edit</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
 
-            subscribersList.innerHTML = table;
+                subscribersList.innerHTML = table;
+            })
+            .catch(error => console.error('Error fetching subscribers:', error));
         });
 
-        function editSubscriber(index) {
-            const subscribers = JSON.parse(localStorage.getItem('subscribers')) || [];
-            const subscriber = subscribers[index];
+        function editSubscriber(id) {
+            fetch(`https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers/${id}`)
+            .then(response => response.json())
+            .then(subscriber => {
+                // Populate form with the subscriber's data
+                document.getElementById('editFullName').value = subscriber.fullName;
+                document.getElementById('editProfileCode').value = subscriber.profileCode || '';
+                document.getElementById('editExamTownCode').value = subscriber.examTownCode || '';
+                document.getElementById('editBatch').value = subscriber.batch;
+                document.getElementById('editAssistancePackage').value = subscriber.assistancePackage;
+                document.getElementById('editScore').value = subscriber.score;
 
-            // Populate form with the subscriber's data
-            document.getElementById('editFullName').value = subscriber.fullName;
-            document.getElementById('editProfileCode').value = subscriber.profileCode || '';
-            document.getElementById('editExamTownCode').value = subscriber.examTownCode || '';
-            document.getElementById('editBatch').value = subscriber.batch; // Updated field
-            document.getElementById('editAssistancePackage').value = subscriber.assistancePackage; // Updated field
-            document.getElementById('editScore').value = subscriber.score;
+                // Show the form
+                document.getElementById('editForm').style.display = 'block';
+                document.getElementById('overlay').style.display = 'block';
 
-            // Show the form
-            document.getElementById('editForm').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-
-            // Store the current index
-            currentEditIndex = index;
+                // Store the current ID
+                currentEditId = id;
+            })
+            .catch(error => console.error('Error fetching subscriber for editing:', error));
         }
 
         document.getElementById('saveChanges').addEventListener('click', function() {
-            const subscribers = JSON.parse(localStorage.getItem('subscribers')) || [];
+            const updatedSubscriber = {
+                fullName: document.getElementById('editFullName').value,
+                profileCode: document.getElementById('editProfileCode').value,
+                examTownCode: document.getElementById('editExamTownCode').value,
+                batch: document.getElementById('editBatch').value,
+                assistancePackage: document.getElementById('editAssistancePackage').value,
+                score: document.getElementById('editScore').value
+            };
 
-            // Update subscriber data
-            subscribers[currentEditIndex].fullName = document.getElementById('editFullName').value;
-            subscribers[currentEditIndex].profileCode = document.getElementById('editProfileCode').value;
-            subscribers[currentEditIndex].examTownCode = document.getElementById('editExamTownCode').value;
-            subscribers[currentEditIndex].batch = document.getElementById('editBatch').value; // Updated field
-            subscribers[currentEditIndex].assistancePackage = document.getElementById('editAssistancePackage').value; // Updated field
-            subscribers[currentEditIndex].score = document.getElementById('editScore').value;
+            fetch(`https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers/${currentEditId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedSubscriber)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Subscriber updated:', data);
+                // Hide the form
+                document.getElementById('editForm').style.display = 'none';
+                document.getElementById('overlay').style.display = 'none';
 
-            // Save updated subscribers list to localStorage
-            localStorage.setItem('subscribers', JSON.stringify(subscribers));
-
-            // Hide the form
-            document.getElementById('editForm').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-
-            // Refresh the list
-            document.getElementById('viewSubscribers').click();
+                // Refresh the list
+                document.getElementById('viewSubscribers').click();
+            })
+            .catch(error => console.error('Error updating subscriber:', error));
         });
 
         document.getElementById('cancelEdit').addEventListener('click', function() {
