@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .container {
-            width: 80%;
+            width: 100%;
             margin: auto;
             text-align: center;
         }
@@ -23,17 +23,8 @@
             padding: 8px;
         }
 
-        th {
-            /* background-color: transparent; */
-            /* background-color: #f2f2f2; */
-        }
-
-        td {
+        th, td {
             text-align: left;
-        }
-
-        img {
-            max-width: 100px;
         }
 
         button {
@@ -48,21 +39,6 @@
             background-color: #45a049;
         }
 
-        /* Make Full Name column wider */
-        th:nth-child(2), td:nth-child(2) {
-            width: 40%; /* Give more space to Full Name */
-        }
-
-        /* Odd and even row styles */
-        .odd-row {
-            background-color: #c8e6c9; /* Light green for odd rows */
-        }
-
-        .even-row {
-            background-color: #ffffff; /* White for even rows */
-        }
-
-        /* Form styles */
         .edit-form {
             display: none;
             position: fixed;
@@ -73,9 +49,9 @@
             padding: 20px;
             border: 1px solid #ddd;
             z-index: 1000;
-            max-height: 80%; /* Limit the max height of the form */
-            overflow-y: auto; /* Enable vertical scrolling */
-            width: 80%; /* Set width for the form */
+            max-height: 80%;
+            overflow-y: auto;
+            width: 80%;
         }
 
         .overlay {
@@ -93,17 +69,25 @@
             margin: 10px 0;
         }
 
-        .form-input input,
-        .form-input select {
+        .form-input input, .form-input select {
             padding: 5px;
             width: 100%;
+        }
+
+        .light-green {
+            background-color: lightgreen;
+        }
+
+        .white {
+            background-color: white;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>ADMIN VIEW</h1>
-        <button id="viewSubscribers">View 2025 Subscribers</button>
+        <h1>2025 JAMB SUBSCRIBERS DATABASE</h1>
+        <h1>OFFICIAL DAN 09027420688</h1>
+        <button id="viewSubscribers">View 2025 Registered Subscribers</button>
         <div id="subscribersList"></div>
     </div>
 
@@ -145,20 +129,47 @@
             <label for="editScore">Score</label>
             <input type="text" id="editScore">
         </div>
+        <div class="form-input">
+            <label for="editAmountPaid">Amount Paid</label>
+            <input type="text" id="editAmountPaid" placeholder="Enter amount paid">
+        </div>
+        <div class="form-input">
+            <label for="editPaymentDetails">Payment Details</label>
+            <select id="editPaymentDetails">
+                <option value="Full payment">Full payment</option>
+                <option value="Half payment">Half payment</option>
+                <option value="Deposit payment">Deposit payment</option>
+            </select>
+        </div>
+        
+        <div class="form-input">
+            <h3>Verify Candidate</h3>
+            <label>
+                <input type="radio" name="verification" value="verified" required>
+                Verified
+            </label><br>
+            <label>
+                <input type="radio" name="verification" value="not_verified" required>
+                Not Verified
+            </label><br>
+            <label>
+                <input type="radio" name="verification" value="pending" required>
+                Pending
+            </label>
+        </div>
+
         <button id="saveChanges">Save Changes</button>
         <button id="cancelEdit">Cancel</button>
     </div>
 
     <script>
-        let currentEditId = null; // Store the ID of the subscriber being edited
+        let currentEditId = null;
 
         document.getElementById('viewSubscribers').addEventListener('click', function() {
             fetch('https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers')
             .then(response => response.json())
             .then(subscribers => {
                 const subscribersList = document.getElementById('subscribersList');
-
-                // Clear previous list
                 subscribersList.innerHTML = '';
 
                 if (subscribers.length === 0) {
@@ -177,12 +188,15 @@
                                 <th>Batch</th>
                                 <th>Assistance Package</th>
                                 <th>Score</th>
+                                <th>Amount Paid</th>
+                                <th>Payment Details</th>
+                                <th>Verification Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${subscribers.map((subscriber) => `
-                                <tr class="${subscribers.indexOf(subscriber) % 2 === 0 ? 'even-row' : 'odd-row'}">
+                                <tr class="${subscriber.id % 2 === 0 ? 'white' : 'light-green'}">
                                     <td>${subscriber.id}</td>
                                     <td>${subscriber.fullName}</td>
                                     <td>${subscriber.profileCode}</td>
@@ -190,7 +204,13 @@
                                     <td>${subscriber.batch}</td>
                                     <td>${subscriber.assistancePackage}</td>
                                     <td>${subscriber.score}</td>
-                                    <td><button onclick="editSubscriber(${subscriber.id})">Edit</button></td>
+                                    <td>${subscriber.amountPaid}</td>
+                                    <td>${subscriber.paymentDetails}</td>
+                                    <td>${subscriber.verification}</td>
+                                    <td>
+                                        <button onclick="editSubscriber(${subscriber.id})">Edit</button>
+                                        <button onclick="deleteSubscriber(${subscriber.id})">Delete</button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -206,58 +226,83 @@
             fetch(`https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers/${id}`)
             .then(response => response.json())
             .then(subscriber => {
-                // Populate form with the subscriber's data
                 document.getElementById('editFullName').value = subscriber.fullName;
                 document.getElementById('editProfileCode').value = subscriber.profileCode || '';
                 document.getElementById('editExamTownCode').value = subscriber.examTownCode || '';
                 document.getElementById('editBatch').value = subscriber.batch;
                 document.getElementById('editAssistancePackage').value = subscriber.assistancePackage;
                 document.getElementById('editScore').value = subscriber.score;
+                document.getElementById('editAmountPaid').value = subscriber.amountPaid || '';
+                document.getElementById('editPaymentDetails').value = subscriber.paymentDetails || '';
 
-                // Show the form
+                // Set the verification radio buttons based on subscriber data
+                const verification = subscriber.verification;
+                const verificationRadios = document.getElementsByName('verification');
+                verificationRadios.forEach(radio => {
+                    radio.checked = (radio.value === verification);
+                });
+
                 document.getElementById('editForm').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
 
-                // Store the current ID
                 currentEditId = id;
             })
             .catch(error => console.error('Error fetching subscriber for editing:', error));
         }
 
+        function deleteSubscriber(id) {
+            if (confirm('Are you sure you want to delete this subscriber?')) {
+                fetch(`https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Subscriber deleted successfully!');
+                        document.getElementById('viewSubscribers').click(); // Refresh the list
+                    } else {
+                        alert('Failed to delete subscriber.');
+                    }
+                })
+                .catch(error => console.error('Error deleting subscriber:', error));
+            }
+        }
+
         document.getElementById('saveChanges').addEventListener('click', function() {
-            const updatedSubscriber = {
+            const updatedData = {
                 fullName: document.getElementById('editFullName').value,
                 profileCode: document.getElementById('editProfileCode').value,
                 examTownCode: document.getElementById('editExamTownCode').value,
                 batch: document.getElementById('editBatch').value,
                 assistancePackage: document.getElementById('editAssistancePackage').value,
-                score: document.getElementById('editScore').value
+                score: document.getElementById('editScore').value,
+                amountPaid: document.getElementById('editAmountPaid').value,
+                paymentDetails: document.getElementById('editPaymentDetails').value,
+                verification: document.querySelector('input[name="verification"]:checked').value
             };
 
             fetch(`https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers/${currentEditId}`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(updatedSubscriber)
+                body: JSON.stringify(updatedData)
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Subscriber updated:', data);
-                // Hide the form
-                document.getElementById('editForm').style.display = 'none';
-                document.getElementById('overlay').style.display = 'none';
-
-                // Refresh the list
-                document.getElementById('viewSubscribers').click();
+            .then(response => {
+                if (response.ok) {
+                    alert('Subscriber details updated successfully!');
+                    document.getElementById('overlay').style.display = 'none';
+                    document.getElementById('editForm').style.display = 'none';
+                    document.getElementById('viewSubscribers').click(); // Refresh the list
+                } else {
+                    alert('Failed to update subscriber details.');
+                }
             })
             .catch(error => console.error('Error updating subscriber:', error));
         });
 
         document.getElementById('cancelEdit').addEventListener('click', function() {
-            // Hide the form without saving changes
-            document.getElementById('editForm').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
+            document.getElementById('editForm').style.display = 'none';
         });
     </script>
 </body>

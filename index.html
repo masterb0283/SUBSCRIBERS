@@ -74,7 +74,7 @@
         <form id="subscriberForm">
             <div class="form-input">
                 <label for="fullName">Candidate Full Name</label>
-                <input type="text" id="fullName" placeholder="Enter Candidate full name" required>
+                <input type="text" id="fullName" placeholder="Enter your full name" required>
             </div>
             <div class="form-input">
                 <label for="profileCode">Profile Code</label>
@@ -107,20 +107,32 @@
 
             <div class="form-input">
                 <label for="score">Desire Score</label>
-                <input type="number" id="score" placeholder="Enter Desire Score" required>
+                <input type="number" id="score" placeholder="Enter your Desire Score" required>
             </div>
 
-            <button type="submit">Register Candidate</button>
+            <div class="form-input">
+                <label for="amountPaid">Amount Paid</label>
+                <input type="number" id="amountPaid" placeholder="Enter amount paid" required>
+            </div>
+
+            <div class="form-input">
+                <label for="paymentDetails">Payment Details</label>
+                <select id="paymentDetails" required>
+                    <option value="">Select payment type</option>
+                    <option value="Full Payment">Full Payment</option>
+                    <option value="Half Payment">Half Payment</option>
+                    <option value="Deposit Payment">Deposit Payment</option>
+                </select>
+            </div>
+
+            <button type="submit">Register Now</button>
         </form>
         <div id="message"></div>
-
-        <h2>Last Subscriber Details</h2>
-        <div id="lastSubscriberDetails"></div>
 
         <!-- Section for editing subscriber details -->
         <div class="overlay" id="overlay"></div>
         <div class="edit-form" id="editForm">
-            <h2>Edit Subscriber Details</h2>
+            <h2>Edit Your Details</h2>
             <div class="form-input">
                 <label for="editFullName">Full Name</label>
                 <input type="text" id="editFullName" required>
@@ -143,7 +155,7 @@
                 </select>
             </div>
             <div class="form-input">
-                <label for="editScore">Score</label>
+                <label for="editScore">Desire Score</label>
                 <input type="number" id="editScore" required>
             </div>
             <button id="saveChanges">Save Changes</button>
@@ -158,7 +170,9 @@
 
     <script>
         const apiUrl = "https://66fffd3c4da5bd237552c82e.mockapi.io/subscribers";
+        let currentSubscriberId = null; // Store the subscriber ID globally when editing
 
+        // Handle form submission (new subscriber or edit)
         document.getElementById('subscriberForm').addEventListener('submit', function(event) {
             event.preventDefault();
 
@@ -167,112 +181,97 @@
             const examTownCode = document.getElementById('examTownCode').value;
             const assistancePackage = document.querySelector('input[name="assistancePackage"]:checked').value;
             const score = document.getElementById('score').value;
+            const amountPaid = document.getElementById('amountPaid').value;
+            const paymentDetails = document.getElementById('paymentDetails').value;
 
-            // Score validation
             if (score < 100 || score > 350) {
                 alert("Score must be between 100 and 350.");
                 return;
             }
 
-            const newSubscriber = {
-                fullName,
-                profileCode,
-                examTownCode,
-                assistancePackage,
-                score
-            };
-
-            // Send data to the API
-            fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(newSubscriber)
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('message').innerText = 'Subscribed successfully!';
-                document.getElementById('subscriberForm').reset();
-                displayLastSubscriber(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('message').innerText = 'Subscription failed. Please try again.';
-            });
-        });
-
-        function displayLastSubscriber(subscriber) {
-            if (subscriber) {
-                const lastSubscriberDetails = `
-                    <p><strong>Full Name:</strong> ${subscriber.fullName}</p>
-                    <p><strong>Profile Code:</strong> ${subscriber.profileCode}</p>
-                    <p><strong>Exam Town Code:</strong> ${subscriber.examTownCode}</p>
-                    <p><strong>Assistance Package:</strong> ${subscriber.assistancePackage}</p>
-                    <p><strong>Score:</strong> ${subscriber.score}</p>
-                    <button onclick="editSubscriber(${subscriber.id})">Edit</button>
-                `;
-                document.getElementById('lastSubscriberDetails').innerHTML = lastSubscriberDetails;
-            }
-        }
-
-        function editSubscriber(id) {
-            fetch(`${apiUrl}/${id}`)
-                .then(response => response.json())
-                .then(subscriber => {
-                    document.getElementById('editFullName').value = subscriber.fullName;
-                    document.getElementById('editProfileCode').value = subscriber.profileCode;
-                    document.getElementById('editExamTownCode').value = subscriber.examTownCode;
-                    document.getElementById('editScore').value = subscriber.score;
-                    document.getElementById('editAssistancePackage').value = subscriber.assistancePackage;
-
-                    // Show overlay and edit form
-                    document.getElementById('overlay').style.display = 'block';
-                    document.getElementById('editForm').style.display = 'block';
-
-                    // Save changes handler
-                    document.getElementById('saveChanges').onclick = function() {
-                        subscriber.fullName = document.getElementById('editFullName').value;
-                        subscriber.profileCode = document.getElementById('editProfileCode').value;
-                        subscriber.examTownCode = document.getElementById('editExamTownCode').value;
-                        subscriber.assistancePackage = document.getElementById('editAssistancePackage').value;
-                        subscriber.score = document.getElementById('editScore').value;
-
-                        fetch(`${apiUrl}/${id}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(subscriber)
-                        })
-                        .then(() => {
-                            document.getElementById('overlay').style.display = 'none';
-                            document.getElementById('editForm').style.display = 'none';
-                            displayLastSubscriber(subscriber);
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                        });
-                    };
-
-                    // Cancel button handler
-                    document.getElementById('cancelEdit').onclick = function() {
-                        document.getElementById('overlay').style.display = 'none';
-                        document.getElementById('editForm').style.display = 'none';
-                    };
-                });
-        }
-
-        // Load last subscriber details when the page is opened
-        window.onload = function() {
+            // Check if the subscriber exists
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(subscribers => {
-                    if (subscribers.length > 0) {
-                        displayLastSubscriber(subscribers[subscribers.length - 1]); // Display last subscriber
+                    const existingSubscriber = subscribers.find(subscriber => subscriber.fullName === fullName);
+
+                    if (existingSubscriber) {
+                        // Set global variable to store the current subscriber ID
+                        currentSubscriberId = existingSubscriber.id;
+
+                        // Show edit form with existing details
+                        document.getElementById('editFullName').value = existingSubscriber.fullName;
+                        document.getElementById('editProfileCode').value = existingSubscriber.profileCode;
+                        document.getElementById('editExamTownCode').value = existingSubscriber.examTownCode;
+                        document.getElementById('editAssistancePackage').value = existingSubscriber.assistancePackage;
+                        document.getElementById('editScore').value = existingSubscriber.score;
+
+                        document.getElementById('editForm').style.display = 'block';
+                        document.getElementById('overlay').style.display = 'block';
+                    } else {
+                        // New subscriber registration
+                        const newSubscriber = {
+                            fullName,
+                            profileCode,
+                            examTownCode,
+                            assistancePackage,
+                            score,
+                            amountPaid,
+                            paymentDetails
+                        };
+
+                        fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newSubscriber)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('message').innerText = 'Registration successfully!';
+                            document.getElementById('subscriberForm').reset();
+                        })
+                        .catch(error => {
+                            document.getElementById('message').innerText = 'Registration failed. Please try again.';
+                        });
                     }
                 });
-        };
+        });
+
+        // Handle saving edited details
+        document.getElementById('saveChanges').addEventListener('click', function() {
+            const editedSubscriber = {
+                fullName: document.getElementById('editFullName').value,
+                profileCode: document.getElementById('editProfileCode').value,
+                examTownCode: document.getElementById('editExamTownCode').value,
+                assistancePackage: document.getElementById('editAssistancePackage').value,
+                score: document.getElementById('editScore').value
+            };
+
+            if (currentSubscriberId) {
+                fetch(`${apiUrl}/${currentSubscriberId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(editedSubscriber)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Your details updated successfully!');
+                    document.getElementById('editForm').style.display = 'none';
+                    document.getElementById('overlay').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error updating subscriber:', error);
+                });
+            }
+        });
+
+        // Cancel edit action
+        document.getElementById('cancelEdit').addEventListener('click', function() {
+            document.getElementById('editForm').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            currentSubscriberId = null; // Reset the subscriber ID
+        });
     </script>
+
 </body>
 </html>
